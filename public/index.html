@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- Tactus: personal auto-scheduling planner. Copyright (c) 2026 Kevin Yu
+     SPDX-License-Identifier: MIT -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tactus</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="app-header" id="app-header">
+    <a class="app-name" href="#/week">Tactus</a>
+    <button class="menu-toggle btn" id="menu-toggle" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav">
+      <a href="#/week" data-route="week">Week</a>
+      <a href="#/day" data-route="day">Day</a>
+      <a href="#/agenda" data-route="agenda">Agenda</a>
+      <a href="#/projects" data-route="projects">Projects</a>
+      <a href="#/recurring" data-route="recurring">Recurring</a>
+      <a href="#/settings" data-route="settings">Settings</a>
+    </nav>
+    <div class="header-actions">
+      <button class="btn" id="btn-refresh-calendars" type="button">Refresh calendars</button>
+      <button class="btn" id="btn-reschedule" type="button">Reschedule</button>
+      <button class="btn btn-primary" id="btn-new-task" type="button">+ Task</button>
+    </div>
+  </header>
+  <div class="tz-banner" id="tz-banner" hidden></div>
+  <div class="app-body">
+    <main class="main" id="view"></main>
+    <aside class="risk-panel" id="risk-panel"></aside>
+  </div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
