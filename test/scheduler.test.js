@@ -108,13 +108,13 @@ test('T-SCH-11: soft deadline does not change order of a free task', () => {
     { blocks: B('[2,09:00,10:00],[1,10:15,11:15]'), atRisk: [] });
 });
 
-test('T-SCH-12: event blocks work time and buffer', () => {
-  expectBoth([t(1, 180)], [ev('10:00', '11:00')], {}, NOW, { blocks: B('[1,11:15,12:45],[1,13:00,14:30]'), atRisk: [] });
+test('T-SCH-12: event blocks work time and the buffer after it', () => {
+  expectBoth([t(1, 180)], [ev('10:00', '11:00')], {}, NOW, { blocks: B('[1,09:00,10:00],[1,11:15,12:15],[1,12:30,13:30]'), atRisk: [] });
 });
 
 test('T-SCH-13: event blocking with minBlockMin 30', () => {
   expectBoth([t(1, 180, { minBlockMin: 30 })], [ev('10:00', '11:00')], {}, NOW,
-    { blocks: B('[1,09:00,09:45],[1,11:15,12:45],[1,13:00,13:45]'), atRisk: [] });
+    { blocks: B('[1,09:00,10:00],[1,11:15,12:45],[1,13:00,13:30]'), atRisk: [] });
 });
 
 test('T-SCH-14: short task gets short block', () => {
@@ -130,9 +130,9 @@ test('T-SCH-16: breaks off gives one run without break', () => {
   expectBoth([t(1, 150)], [], { breakIntervalMin: 0 }, NOW, { blocks: B('[1,09:00,11:30]'), atRisk: [] });
 });
 
-test('T-SCH-17: high priority task takes precedence after event', () => {
+test('T-SCH-17: high priority task takes precedence around an event; low task fills the run-capped slot', () => {
   expectBoth([t(1, 180, { priority: 'high' }), t(2, 30, { priority: 'low' })], [ev('10:00', '11:00')], {}, NOW,
-    { blocks: B('[2,09:00,09:30],[1,11:15,12:45],[1,13:00,14:30]'), atRisk: [] });
+    { blocks: B('[1,09:00,10:00],[1,11:15,12:15],[2,12:15,12:45],[1,13:00,14:00]'), atRisk: [] });
 });
 
 test('T-SCH-18: hard deadline task is placed before soft deadline task', () => {
@@ -174,7 +174,7 @@ test('T-SCH-24: determinism under reversed input and repeated runs', () => {
     t(4, 60, { priority: 'low', ...soft('12:00') }), t(5, 60, { priority: 'low', stageSortOrder: 0 }), t(6, 60, { priority: 'high', stageSortOrder: 1 })];
   const busy = [ev('10:00', '11:00')];
   expectBoth(tasks, busy, {}, NOW,
-    { blocks: B('[2,09:00,09:30],[3,11:15,12:15],[3,12:30,13:30],[1,13:45,15:15],[1,15:30,17:00],[4,Tue 09:00,Tue 10:00],[5,Tue 10:15,Tue 11:15],[6,Tue 11:30,Tue 12:30]'),
+    { blocks: B('[3,09:00,10:00],[3,11:15,12:15],[2,12:15,12:45],[1,13:00,14:30],[1,14:45,16:15],[4,Tue 09:00,Tue 10:00],[5,Tue 10:15,Tue 11:15],[6,Tue 11:30,Tue 12:30]'),
       atRisk: [{ taskId: 4, kind: 'soft' }] });
   assert.deepStrictEqual(sched(rev(tasks), rev(busy)), sched(tasks, busy));
   const a = JSON.stringify(sched(tasks, busy));
@@ -268,7 +268,7 @@ test('T-SCH-34: greedy first chunk kept when safe, lookahead on the second', () 
 });
 
 test('T-SCH-35: lookahead shortens a chunk truncated by a 75 min window', () => {
-  expectBoth([t(1, 180)], [ev('10:30', '11:00')], {}, NOW,
+  expectBoth([t(1, 180)], [ev('10:15', '11:00')], {}, NOW,
     { blocks: B('[1,09:00,10:00],[1,11:15,12:15],[1,12:30,13:30]'), atRisk: [] });
 });
 

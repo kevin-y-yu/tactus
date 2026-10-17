@@ -134,3 +134,29 @@ test('recurring respects the break rule: a 4 h occurrence is cut into runs of at
   assert.ok(out.blocks.every((b) => b.end - b.start <= 90 * 60000));
   for (let i = 1; i < out.blocks.length; i++) assert.ok(out.blocks[i].start - out.blocks[i - 1].end >= 15 * 60000, 'break between runs');
 });
+
+// Any-day weekly is the only rule whose window may use other days of its week; a plain occurrence stays on its own day.
+const LON_WH = { '0': [], '1': [['09:00', '12:30'], ['13:30', '17:30']], '2': [['09:00', '12:30'], ['13:30', '17:30']],
+                 '3': [['09:00', '12:30'], ['13:30', '17:30']], '4': [['09:00', '12:30'], ['13:30', '17:30']],
+                 '5': [['09:00', '12:30'], ['13:30', '17:30']], '6': [] };
+const LON_NOW = P('2026-10-17T10:00:00Z');
+const lonOcc = (over = {}) => occ({ occurrenceDate: '2026-10-23', periodStart: P('2026-10-22T23:00:00Z'),
+  periodEnd: P('2026-10-25T23:00:00Z'), durationMin: 30, windowStart: 540, windowEnd: 570, ...over });
+const lonSettings = () => settings({ timezone: 'Europe/London', meetingBufferMin: 15, workHours: structuredClone(LON_WH) });
+
+test('recurring window uses only the occurrence day: free 09:00-09:30 London window on Friday is used', () => {
+  const busy = [{ start: P('2026-10-23T08:30:00Z'), end: P('2026-10-23T09:30:00Z'), kind: 'event' }];
+  const out = lib().placeOccurrences([lonOcc()], busy, lonSettings(), LON_NOW);
+  assert.deepStrictEqual(out.blocks.map((b) => ({ occurrenceDate: b.occurrenceDate, start: b.start, end: b.end })),
+    [{ occurrenceDate: '2026-10-23', start: P('2026-10-23T08:00:00Z'), end: P('2026-10-23T08:30:00Z') }]);
+  assert.deepStrictEqual(out.atRisk, []);
+});
+
+test('recurring window uses only the occurrence day: blocked window does not spill onto Saturday', () => {
+  const busy = [{ start: P('2026-10-23T07:30:00Z'), end: P('2026-10-23T08:45:00Z'), kind: 'event' }];
+  const out = lib().placeOccurrences([lonOcc()], busy, lonSettings(), LON_NOW);
+  assert.deepStrictEqual(out.blocks.map((b) => ({ occurrenceDate: b.occurrenceDate, start: b.start, end: b.end })),
+    [{ occurrenceDate: '2026-10-23', start: P('2026-10-23T09:00:00Z'), end: P('2026-10-23T09:30:00Z') }]);
+  assert.ok(!out.blocks.some((b) => b.occurrenceDate === '2026-10-24' || b.start >= P('2026-10-24T00:00:00Z')));
+  assert.deepStrictEqual(out.atRisk, []);
+});

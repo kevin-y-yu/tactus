@@ -10,7 +10,7 @@ export const NUMBER_FIELDS = [
   { key: 'defaultMinBlockMin', label: 'Minimum block length (min)', min: 15, max: 240, step: 15 },
   { key: 'breakMin', label: 'Break length (min)', min: 0, max: 60, step: 5 },
   { key: 'breakIntervalMin', label: 'Break after continuous work of (min)', min: 0, max: 480, step: 15, hint: '0 = no breaks; otherwise 30–480' },
-  { key: 'meetingBufferMin', label: 'Buffer around meetings (min)', min: 0, max: 60, step: 5 },
+  { key: 'meetingBufferMin', label: 'Buffer after meetings (min)', min: 0, max: 60, step: 5 },
   { key: 'horizonDays', label: 'Planning horizon (days)', min: 7, max: 90, step: 1 },
   { key: 'hardDeadlineMarginMin', label: 'Hard-deadline safety margin (min)', min: 0, max: 1440, step: 15 },
   { key: 'lunchMin', label: 'Lunch length (min)', min: 0, max: 120, step: 15, hint: '0 = no lunch' },

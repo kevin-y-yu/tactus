@@ -67,7 +67,7 @@ function generate(seed) {
   return { tasks, busy, settings };
 }
 
-test('T-PROP: guarantee and no overlaps over seeds 1..2000, path counts main 1962 repair 20 fallback 18', () => {
+test('T-PROP: guarantee and no overlaps over seeds 1..2000, path counts main 1963 repair 19 fallback 18', () => {
   // D13 generator self-check, before any module load.
   const strip = (g) => ({ settings: g.settings, busy: g.busy, tasks: g.tasks.map(({ sortOrder, createdAt, ...r }) => r) });
   assert.deepStrictEqual(strip(generate(6551)), {
@@ -128,7 +128,7 @@ test('T-PROP: guarantee and no overlaps over seeds 1..2000, path counts main 196
   }
   assert.deepStrictEqual(failures, []);
   assert.deepStrictEqual(overlaps, []);
-  assert.deepStrictEqual(paths, { main: 1962, repair: 20, fallback: 18 });
+  assert.deepStrictEqual(paths, { main: 1963, repair: 19, fallback: 18 });
   // (c) both the repair and the fallback path are exercised
   assert.strictEqual(paths.repair >= 1 && paths.fallback >= 1, true);
 
