@@ -38,7 +38,7 @@ variables win).
 | `HOST` | `127.0.0.1` | Bind address. A non-loopback host without `AUTH_TOKEN` logs a startup warning. |
 | `DATA_DIR` | `<repo>/data` | Runtime data directory |
 | `DB_PATH` | `$DATA_DIR/tactus.db` | SQLite database file |
-| `AUTH_TOKEN` | unset (auth off) | Shared token. When set, every `/api/*` route except `/api/health` and `/api/auth/*` requires it (as `Authorization: Bearer <token>` or via the login page's session cookie). Static files stay public. |
+| `AUTH_TOKEN` | unset (auth off) | Shared token. When set, every `/api/*` route except `/api/health` and `/api/auth/*` requires it (as `Authorization: Bearer <token>` or via the login page's session cookie). Static files stay public. Must be at least 24 characters (generate one with `openssl rand -hex 24`); a shorter token stops the server at startup. |
 | `TRUST_PROXY` | unset | Set to `1` behind a reverse proxy (for example Heroku) so secure cookies work |
 
 Scheduling settings are edited on the Settings page, in four sections: **Work hours & schedules**
@@ -164,7 +164,8 @@ set a long random `AUTH_TOKEN`, and set `TRUST_PROXY=1` behind the platform's pr
 
 - **SQLite on Heroku is ephemeral**: the dyno filesystem is reset on every restart and deploy, so all data is lost.
   A Postgres adapter is backlog item BL-1; until then, host only where `DATA_DIR` is on persistent disk.
-- The login endpoint has no rate limit. Use a long random token.
+- `AUTH_TOKEN` must be at least 24 characters, or the server refuses to start. Generate one with
+  `openssl rand -hex 24`. The login endpoint has no rate limit, so a long random token is what protects it.
 
 ## Limitations
 
