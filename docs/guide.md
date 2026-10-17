@@ -104,7 +104,7 @@ day to Monday–Friday) and a Save button. "+ New schedule" starts from a copy o
   (on the project card); otherwise the default schedule. Recurring tasks have the same "Schedule" choice, falling back to
   their project's and then the default. A recurring task with a preferred time window ignores schedules and uses its
   window.
-- **Meeting buffer**: Station leaves a gap after each meeting (default 15 minutes, Settings → Scheduling rules), not before it. Meetings no longer than twice the buffer get no gap.
+- **Meeting buffer**: Tactus leaves a gap after each meeting (default 15 minutes, Settings → Scheduling rules), not before it. Meetings no longer than twice the buffer get no gap.
 - Calendar events, breaks and the meeting buffer apply to every schedule, and work from different schedules never
   overlaps: there is one timeline.
 - Deleting a schedule moves its tasks, projects and recurring tasks to their fallback; the confirmation says how many
