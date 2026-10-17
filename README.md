@@ -26,11 +26,11 @@ cd tactus
 
 Open http://localhost:3200. Your data is stored in `data/tactus.db`, and `./run.sh` backs it up on every start.
 
-## Screenshots
+## Agenda view
 
-| Agenda | Projects |
-|---|---|
-| ![Agenda view](docs/screenshots/agenda.png) | ![Projects view](docs/screenshots/projects.png) |
+Every planned block as a to-do list, with deadlines and risk flags. Tasks that had to be split show as parts.
+
+![Agenda view](docs/screenshots/agenda.png)
 
 ## Configuration
 
