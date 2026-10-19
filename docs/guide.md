@@ -56,7 +56,7 @@ safety margin) and **General** (`#/settings/general`: timezone, week start, 24-h
   unchanged. In Projects the new task starts in the project and stage you last clicked in; in Agenda it starts in the
   project you filtered by.
 - **Deadlines**: a deadline with a date but no time means the end of that day (23:59 in your timezone).
-- **Drag and resize**: drag a future block to pin it at a new time; lunch can be dragged too (move only, same day); drag its bottom edge to resize a task block. On
+- **Drag and resize**: drag a future block to pin it at a new time; lunch can be dragged too (move only, same day, to a time that has not passed; today's lunch even if you missed it); drag its bottom edge to resize a task block. On
   touch screens, tap a block first to select it, then drag. Esc cancels a drag. The block popover's "Move…" is the
   keyboard alternative.
 - **Moving tasks between projects**: in Projects, drag a task by its grip (⠿) onto another stage, a "No stage" group or
@@ -86,7 +86,7 @@ safety margin) and **General** (`#/settings/general`: timezone, week start, 24-h
 
 ## Lunch and the 24-hour clock
 
-- **Lunch** (Settings → Scheduling rules → Lunch): set a lunch length (0 = none) and the earliest start and latest end. Each working day gets one lunch in the earliest free time inside that window and your default schedule's hours, around meetings. It is placed before recurring tasks and tasks, shows on the calendar, and counts as a break: work on either side is not one continuous stretch for the break rule. A lunch that has already started stays where it is. You can drag a future lunch to another time on the same day, outside the window too; it stays there when the schedule is recalculated, and tasks are planned around it. Esc cancels the drag. If you used to plan lunch as a task or a gap in your hours, delete that and use this.
+- **Lunch** (Settings → Scheduling rules → Lunch): set a lunch length (0 = none) and the earliest start and latest end. Each working day gets one lunch in the earliest free time inside that window and your default schedule's hours, around meetings. It is placed before recurring tasks and tasks, shows on the calendar, and counts as a break: work on either side is not one continuous stretch for the break rule. A lunch that has already started stays where it is unless you move it: if you missed today's lunch, drag it to a later time today. You can drag today's or a future lunch to any time on the same day that has not passed yet, outside the window too; it stays there when the schedule is recalculated, and tasks are planned around it. Esc cancels the drag. If you used to plan lunch as a task or a gap in your hours, delete that and use this.
 - **24-hour clock** (Settings → General): when on, time fields are text boxes that take `13:00` (also `1300` or `9:30`) instead of the browser's 1:00 PM style. Calendar and list times are always shown in 24-hour form.
 
 ## Schedules

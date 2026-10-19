@@ -1,6 +1,6 @@
 // Tactus: personal auto-scheduling planner. Copyright (c) 2026 Kevin Yu
 // SPDX-License-Identifier: MIT
-// Drag and resize of calendar blocks (spec §10.3), and move-only drag of lunch (same day), hand-built on Pointer Events; snapping is the pure dragResult.
+// Drag and resize of calendar blocks (spec §10.3), and move-only drag of lunch (same day, to a future time; today's lunch even if missed), hand-built on Pointer Events; snapping is the pure dragResult.
 // Idea from Planly (MIT): wireBlock drag/resize pointer-gesture structure; reimplemented.
 import { dragResult } from '../dragModel.js';
 import { utcToZoned } from '../../shared/time.js';
@@ -18,8 +18,8 @@ export function canDrag(block, now) {
   return (block.kind === 'task' || block.kind === 'recurring') && Date.parse(block.start) >= now && !block.done && !block.completed;
 }
 
-export function canDragLunch(ev, now) {
-  return ev.uid === 'lunch' && ev.calendarId === null && Date.parse(ev.start) >= now;
+export function canDragLunch(ev, now, tzName) {
+  return ev.uid === 'lunch' && ev.calendarId === null && utcToZoned(Date.parse(ev.start), tzName).date >= utcToZoned(now, tzName).date;
 }
 
 export function canResize(block, colDate, tzName) {
@@ -69,7 +69,7 @@ export function createDragController({ pxPerHour, redraw }) {
   }
 
   function decorateLunch(el, ev, now) {
-    if (!canDragLunch(ev, now)) return;
+    if (!canDragLunch(ev, now, tz())) return;
     el.classList.add('can-drag');
     if (String(ev.id) === selectedId) el.classList.add('selected');
   }
@@ -105,7 +105,7 @@ export function createDragController({ pxPerHour, redraw }) {
     let block = null, lunch = null, mode = 'move';
     if (el.classList.contains('event')) {
       lunch = state.calendar.events.find((x) => String(x.id) === el.dataset.eventId);
-      if (!lunch || !canDragLunch(lunch, Date.now())) return;
+      if (!lunch || !canDragLunch(lunch, Date.now(), tz())) return;
     } else {
       block = state.calendar.blocks.find((b) => String(b.id) === el.dataset.blockId);
       if (!block || !canDrag(block, Date.now())) return;

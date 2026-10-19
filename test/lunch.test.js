@@ -44,10 +44,40 @@ test('lunch: an override in the past is ignored', () => {
     [P('2026-10-19T12:00:00Z'), P('2026-10-19T13:00:00Z')]);
 });
 
-test('lunch: a started lunch wins over an override for its day', () => {
+test('lunch: a future override moves a started lunch', () => {
   const prev = [{ start: P('2026-10-19T07:30:00Z'), end: P('2026-10-19T08:30:00Z') }];
   const out = placeLunches(settings(), [], now, prev, { '2026-10-19': '15:00' });
+  assert.deepStrictEqual(pairs(out), [
+    [P('2026-10-19T15:00:00Z'), P('2026-10-19T16:00:00Z')],
+    [P('2026-10-20T12:00:00Z'), P('2026-10-20T13:00:00Z')],
+    [P('2026-10-21T12:00:00Z'), P('2026-10-21T13:00:00Z')],
+  ]);
+});
+
+test('lunch: a started lunch with no override stays', () => {
+  const prev = [{ start: P('2026-10-19T07:30:00Z'), end: P('2026-10-19T08:30:00Z') }];
+  assert.deepStrictEqual(pairs(placeLunches(settings(), [], now, prev)), [
+    [P('2026-10-19T07:30:00Z'), P('2026-10-19T08:30:00Z')],
+    [P('2026-10-20T12:00:00Z'), P('2026-10-20T13:00:00Z')],
+    [P('2026-10-21T12:00:00Z'), P('2026-10-21T13:00:00Z')],
+  ]);
+});
+
+test('lunch: a past override does not move a started lunch', () => {
+  const prev = [{ start: P('2026-10-19T07:30:00Z'), end: P('2026-10-19T08:30:00Z') }];
+  const out = placeLunches(settings(), [], now, prev, { '2026-10-19': '07:45' });
+  assert.strictEqual(out.length, 3);
   assert.deepStrictEqual(pairs(out)[0], [P('2026-10-19T07:30:00Z'), P('2026-10-19T08:30:00Z')]);
+});
+
+test('lunch: a past day\'s lunch is never moved by an override', () => {
+  const prev = [{ start: P('2026-10-18T12:00:00Z'), end: P('2026-10-18T13:00:00Z') }];
+  assert.deepStrictEqual(pairs(placeLunches(settings(), [], now, prev, { '2026-10-18': '13:30' })), [
+    [P('2026-10-18T12:00:00Z'), P('2026-10-18T13:00:00Z')],
+    [P('2026-10-19T12:00:00Z'), P('2026-10-19T13:00:00Z')],
+    [P('2026-10-20T12:00:00Z'), P('2026-10-20T13:00:00Z')],
+    [P('2026-10-21T12:00:00Z'), P('2026-10-21T13:00:00Z')],
+  ]);
 });
 
 test('lunch: an override that ends on the next day is ignored; one ending before midnight is kept', () => {

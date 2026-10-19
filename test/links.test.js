@@ -181,6 +181,41 @@ test('lunch: a move to a day with no lunch is refused with 409', async (t) => {
   assert.strictEqual(r.body.error, 'no lunch that day');
 });
 
+test('lunch: a missed lunch today can be moved to a later time and survives reschedule', async (t) => {
+  const { api, repo } = await setup(t);
+  assert.strictEqual((await api('PUT', '/api/settings', { lunchMin: 60, lunchStart: '12:00', lunchEnd: '14:00' })).status, 200);
+  const task = await mk(api, { title: 'Long', durationMin: 600 });
+  const from = encodeURIComponent(new Date(C0 - DAY).toISOString()), to = encodeURIComponent(new Date(C0 + 2 * DAY).toISOString());
+  const pairsOf = async () => (await api('GET', `/api/calendar?from=${from}&to=${to}`)).body.events
+    .filter((e) => e.uid === 'lunch').map((l) => [l.start, l.end]);
+  await repo.setMeta('lunchBlocks', [{ start: '2026-10-18T12:00:00.000Z', end: '2026-10-18T13:00:00.000Z' }, { start: '2026-10-19T08:00:00.000Z', end: '2026-10-19T09:00:00.000Z' }]);
+  assert.strictEqual((await api('POST', '/api/schedule/run')).status, 200);
+  assert.deepStrictEqual(await pairsOf(), [
+    ['2026-10-18T12:00:00.000Z', '2026-10-18T13:00:00.000Z'],
+    ['2026-10-19T08:00:00.000Z', '2026-10-19T09:00:00.000Z'],
+    ['2026-10-20T12:00:00.000Z', '2026-10-20T13:00:00.000Z'],
+  ]);
+  const move = await api('PUT', '/api/lunch/2026-10-19', { start: '2026-10-19T15:00:00Z' });
+  assert.strictEqual(move.status, 200, JSON.stringify(move.body));
+  assert.deepStrictEqual(move.body, { date: '2026-10-19', start: '2026-10-19T15:00:00.000Z', end: '2026-10-19T16:00:00.000Z' });
+  const expected = [
+    ['2026-10-18T12:00:00.000Z', '2026-10-18T13:00:00.000Z'],
+    ['2026-10-19T15:00:00.000Z', '2026-10-19T16:00:00.000Z'],
+    ['2026-10-20T12:00:00.000Z', '2026-10-20T13:00:00.000Z'],
+  ];
+  assert.deepStrictEqual(await pairsOf(), expected);
+  assert.strictEqual((await api('POST', '/api/schedule/run')).status, 200);
+  assert.deepStrictEqual(await pairsOf(), expected);
+  const blocks = (await api('GET', `/api/tasks/${task.id}`)).body.blocks;
+  assert.ok(blocks.every((b) => Date.parse(b.start) >= C0), 'no block starts before now');
+  assert.ok(!blocks.some((x) => Date.parse(x.start) < Date.parse('2026-10-19T16:00:00Z') && Date.parse(x.end) > Date.parse('2026-10-19T15:00:00Z')), 'no block overlaps the moved lunch');
+  const past = await api('PUT', '/api/lunch/2026-10-19', { start: '2026-10-19T09:00:00Z' });
+  assert.strictEqual(past.status, 400);
+  assert.strictEqual(past.body.error, 'start: must not be in the past');
+  assert.strictEqual((await api('PUT', '/api/lunch/2026-10-18', { start: '2026-10-18T13:00:00Z' })).status, 400);
+  assert.deepStrictEqual(await repo.getMeta('lunchOverrides'), { '2026-10-19': '15:00' });
+});
+
 test('a task can be set to block other tasks of its project', async (t) => {
   const { api } = await setup(t);
   const p = (await api('POST', '/api/projects', { name: 'P' })).body;
