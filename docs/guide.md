@@ -144,6 +144,15 @@ So a task that was planned for tomorrow and is finished today shows today, endin
 overlap other items; no warning is shown. Recurring occurrences marked done follow the same rule. A task with no blocks
 leaves nothing on the calendar. Reopening a task does not move its blocks back.
 
+## Partly done blocks
+
+If you only worked part of a task block, click the block and choose "Partially done…", then enter the minutes you
+worked (it starts at the block's full length). The block is shortened to that many minutes from its start and marked
+done, those minutes count toward the task, and the rest is planned again: a 90-minute task with 45 minutes worked gets a
+new 45-minute block. Entering the full length is the same as "Mark this part done", and once the done parts add up to
+the task's length the task is marked done. Unticking the part later removes the credit but does not restore the
+block's original length. Recurring tasks don't have this option.
+
 ## Calendar zoom
 
 The Week and Day views always draw the full day (00:00–24:00) and can always be scrolled. The toolbar toggle chooses the

@@ -74,6 +74,7 @@ export const runSchedule = () => request('POST', 'schedule/run');
 // ---- blocks ----
 export const createBlock = (body) => request('POST', 'blocks', body);
 export const updateBlock = (id, body) => request('PATCH', `blocks/${enc(id)}`, body);
+export const partialDoneBlock = (id, minutes) => request('POST', `blocks/${enc(id)}/partial-done`, { minutes });
 export const moveLunch = (date, body) => request('PUT', `lunch/${enc(date)}`, body);
 export const deleteBlock = (id) => request('DELETE', `blocks/${enc(id)}`);
 

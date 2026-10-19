@@ -318,6 +318,23 @@ function openBlockPopover(view, anchor, block) {
       }
     }).catch(() => {});
   }
+  if (isTask && free) {
+    const lengthMin = Math.round((Date.parse(block.end) - Date.parse(block.start)) / MIN);
+    const minInput = h('input', { type: 'number', min: '1', max: String(lengthMin), step: '1', value: String(lengthMin) });
+    const partForm = h('form', { class: 'move-form', hidden: true, onsubmit: async (e) => {
+      e.preventDefault();
+      const minutes = Number(minInput.value);
+      if (!Number.isInteger(minutes) || minutes < 1 || minutes > lengthMin) {
+        toast(`Enter whole minutes from 1 to ${lengthMin}`, 'error'); return;
+      }
+      try { await mutate(() => api.partialDoneBlock(block.id, minutes)); closePopover(); }
+      catch (err) { toast(err.message, 'error'); }
+    } },
+      h('label', {}, 'Minutes worked ', minInput),
+      h('button', { class: 'btn btn-primary', type: 'submit' }, 'Save'));
+    acts.push(btn('Partially done…', () => { partForm.hidden = !partForm.hidden; if (!partForm.hidden) minInput.focus(); }));
+    acts.push(partForm);
+  }
   if (isTask && block.missed) acts.push(btn("Didn't do it", act(() => api.deleteBlock(block.id))));
   if (free) acts.push(btn(block.pinned ? 'Unpin' : 'Pin here', act(() => api.updateBlock(block.id, { pinned: !block.pinned }))));
 
