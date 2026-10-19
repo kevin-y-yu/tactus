@@ -133,6 +133,54 @@ test('lunch: placed once a day in its window, as a pseudo-event, and tasks avoid
   assert.ok(blocks.every((b) => !(Date.parse(b.start) < Date.parse(lunches[0].end) && Date.parse(b.end) > Date.parse(lunches[0].start))), 'no block overlaps lunch');
 });
 
+test('lunch: drag moves one day\'s lunch, survives reschedule, and tasks plan around it', async (t) => {
+  const { api } = await setup(t);
+  assert.strictEqual((await api('PUT', '/api/settings', { lunchMin: 60, lunchStart: '12:00', lunchEnd: '14:00' })).status, 200);
+  const task = await mk(api, { title: 'Long', durationMin: 600 });
+  const from = encodeURIComponent(new Date(C0).toISOString()), to = encodeURIComponent(new Date(C0 + 2 * DAY).toISOString());
+  const pairsOf = async () => (await api('GET', `/api/calendar?from=${from}&to=${to}`)).body.events
+    .filter((e) => e.uid === 'lunch').map((l) => [l.start, l.end]);
+  const move = await api('PUT', '/api/lunch/2026-10-19', { start: '2026-10-19T15:00:00Z' });
+  assert.strictEqual(move.status, 200, JSON.stringify(move.body));
+  assert.deepStrictEqual(move.body, { date: '2026-10-19', start: '2026-10-19T15:00:00.000Z', end: '2026-10-19T16:00:00.000Z' });
+  const expected = [['2026-10-19T15:00:00.000Z', '2026-10-19T16:00:00.000Z'], ['2026-10-20T12:00:00.000Z', '2026-10-20T13:00:00.000Z']];
+  assert.deepStrictEqual(await pairsOf(), expected);
+  assert.strictEqual((await api('POST', '/api/schedule/run')).status, 200);
+  assert.deepStrictEqual(await pairsOf(), expected);
+  const blocks = (await api('GET', `/api/tasks/${task.id}`)).body.blocks;
+  const ov = (a, b) => blocks.some((x) => Date.parse(x.start) < Date.parse(b) && Date.parse(x.end) > Date.parse(a));
+  assert.ok(!ov('2026-10-19T15:00:00Z', '2026-10-19T16:00:00Z'), 'no block overlaps the moved lunch');
+  assert.ok(ov('2026-10-19T12:00:00Z', '2026-10-19T13:00:00Z'), 'work fills the old lunch slot');
+  const past = await api('PUT', '/api/lunch/2026-10-19', { start: '2026-10-19T09:00:00Z' });
+  assert.strictEqual(past.status, 400);
+  assert.strictEqual(past.body.error, 'start: must not be in the past');
+  const grid = await api('PUT', '/api/lunch/2026-10-19', { start: '2026-10-19T15:10:00Z' });
+  assert.strictEqual(grid.status, 400);
+  assert.strictEqual(grid.body.error, 'start: must be on the 15-minute grid');
+  const wrongDay = await api('PUT', '/api/lunch/2026-10-20', { start: '2026-10-19T15:00:00Z' });
+  assert.strictEqual(wrongDay.status, 400);
+  assert.strictEqual(wrongDay.body.error, 'start: lunch must start and end on that day');
+  const endsNextDay = await api('PUT', '/api/lunch/2026-10-19', { start: '2026-10-19T23:30:00Z' });
+  assert.strictEqual(endsNextDay.status, 400);
+  assert.strictEqual(endsNextDay.body.error, 'start: lunch must start and end on that day');
+  assert.strictEqual((await api('PUT', '/api/lunch/nope', { start: '2026-10-19T15:00:00Z' })).status, 400);
+  assert.strictEqual((await api('PUT', '/api/lunch/2026-12-31', { start: '2026-12-31T12:00:00Z' })).status, 400);
+  assert.strictEqual((await api('PUT', '/api/settings', { lunchMin: 0 })).status, 200);
+  assert.strictEqual((await api('PUT', '/api/lunch/2026-10-20', { start: '2026-10-20T15:00:00Z' })).status, 409);
+});
+
+test('lunch: a move to a day with no lunch is refused with 409', async (t) => {
+  const { api } = await setup(t);
+  assert.strictEqual((await api('PUT', '/api/settings', { lunchMin: 60, lunchStart: '12:00', lunchEnd: '14:00' })).status, 200);
+  const off = { ...FIXTURE.workHours, '3': [] };
+  assert.strictEqual((await api('PUT', '/api/settings', { workHours: off })).status, 200);
+  const cal = (await api('GET', `/api/calendar?from=${encodeURIComponent(new Date(C0).toISOString())}&to=${encodeURIComponent(new Date(C0 + 4 * DAY).toISOString())}`)).body;
+  assert.ok(!cal.events.some((e) => e.uid === 'lunch' && e.start.startsWith('2026-10-21')), 'Wednesday has no lunch');
+  const r = await api('PUT', '/api/lunch/2026-10-21', { start: '2026-10-21T15:00:00Z' });
+  assert.strictEqual(r.status, 409, JSON.stringify(r.body));
+  assert.strictEqual(r.body.error, 'no lunch that day');
+});
+
 test('a task can be set to block other tasks of its project', async (t) => {
   const { api } = await setup(t);
   const p = (await api('POST', '/api/projects', { name: 'P' })).body;

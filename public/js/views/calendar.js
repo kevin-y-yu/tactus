@@ -196,12 +196,14 @@ function draw(view) {
       const timeText = fmtTimeRange(Date.parse(it.item.start), Date.parse(it.item.end), tzName);
       if (it.kind === 'event') {
         const ev = it.item;
-        return h('div', {
+        const el = h('div', {
           class: 'event' + (ev.blocking ? '' : ' non-blocking'),
           dataset: { eventId: ev.id },
           style: { ...pos, borderLeftColor: ev.color || '' },
           onclick: (e) => { e.stopPropagation(); openEventPopover(e.currentTarget, ev); },
         }, h('div', { class: 'item-title' }, ev.title), h('div', { class: 'item-time' }, timeText));
+        if (ev.uid === 'lunch' && ev.calendarId === null) view.drag.decorateLunch(el, ev, now);
+        return el;
       }
       const b = it.item;
       const el = h('div', {

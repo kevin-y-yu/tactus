@@ -118,12 +118,12 @@ body{display:flex;flex-direction:column;height:100vh;font:var(--fs-base)/var(--l
 .badge-missed{background:var(--c-muted)}
 
 /* ===== chunk 11: drag (only chunk 11 edits this section) ===== */
-.block.can-drag{cursor:grab;user-select:none;-webkit-user-select:none}
-.block.selected{touch-action:none;box-shadow:0 0 0 2px var(--c-primary)}
+.block.can-drag,.event.can-drag{cursor:grab;user-select:none;-webkit-user-select:none}
+.block.selected,.event.selected{touch-action:none;box-shadow:0 0 0 2px var(--c-primary)}
 .resize-handle{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize}
 .block.can-resize:hover .resize-handle,.block.selected .resize-handle{background:var(--c-handle)}
 @media (pointer:coarse){.resize-handle{height:12px}}
-.block.drag-source{opacity:.35}
+.block.drag-source,.event.drag-source{opacity:.35}
 .cal.dragging,.cal.dragging *{cursor:grabbing}
 .drag-ghost{position:absolute;left:2px;right:2px;z-index:3;border:2px dashed var(--c-primary);border-radius:4px;background:var(--c-drag-ghost);color:var(--c-primary-strong);font-size:11px;padding:2px 4px;pointer-events:none;overflow:hidden}
 .drag-ghost.invalid{border-color:var(--c-danger);background:var(--c-drag-invalid);color:var(--c-danger-strong)}
