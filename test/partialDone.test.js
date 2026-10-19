@@ -113,19 +113,20 @@ test('T-PART-2: past block, leftover is not left as a missed block', async (t) =
   assert.ok(Date.parse(open[0].start) >= C0 + 120 * MINUTE);
 });
 
-test('T-PART-3: full length is the normal done flow and auto-completes', async (t) => {
+test('T-PART-3: full length auto-completes; a block planned past now moves to end at now', async (t) => {
   const { api } = await mkApp(t);
   const id = await postTask(api, { title: 'Hour', durationMin: 60 });
   const bid = (await taskBlocks(api, id))[0][0];
   const r = await partial(api, bid, 60);
   assert.strictEqual(r.status, 200);
-  assert.strictEqual(iso(r.body.end), at('11:00'));
+  assert.strictEqual(iso(r.body.start), at('09:00'));
+  assert.strictEqual(iso(r.body.end), at('10:00'));
   assert.strictEqual(r.body.completed, true);
   assert.strictEqual(r.body.done, true);
   assert.strictEqual((await api('GET', `/api/tasks/${id}`)).body.task.status, 'done');
 });
 
-test('T-PART-4: pinned block, partial reaching the estimate auto-completes and keeps the pin', async (t) => {
+test('T-PART-4: pinned block, partial reaching the estimate auto-completes and keeps the pin, moved to end at now', async (t) => {
   const { api } = await mkApp(t);
   const id = await postTask(api, { title: 'Hour', durationMin: 60 });
   const pin = await api('POST', '/api/blocks', { taskId: id, start: at('13:00'), end: at('14:30') });
@@ -133,14 +134,14 @@ test('T-PART-4: pinned block, partial reaching the estimate auto-completes and k
   const pid = pin.body.id;
   const r = await partial(api, pid, 60);
   assert.strictEqual(r.status, 200);
-  assert.strictEqual(iso(r.body.start), at('13:00'));
-  assert.strictEqual(iso(r.body.end), at('14:00'));
+  assert.strictEqual(iso(r.body.start), at('09:00'));
+  assert.strictEqual(iso(r.body.end), at('10:00'));
   assert.strictEqual(r.body.completed, true);
   assert.strictEqual(r.body.pinned, true);
   assert.strictEqual(r.body.done, true);
   const task = (await api('GET', `/api/tasks/${id}`)).body;
   assert.strictEqual(task.task.status, 'done');
-  assert.deepStrictEqual(await taskBlocks(api, id), [[pid, at('13:00'), at('14:00'), true]]);
+  assert.deepStrictEqual(await taskBlocks(api, id), [[pid, at('09:00'), at('10:00'), true]]);
 });
 
 test('T-PART-5: validation, already completed, task done, recurring', async (t) => {

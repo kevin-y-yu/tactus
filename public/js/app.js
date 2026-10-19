@@ -120,6 +120,14 @@ function wireOnce() {
   });
   el('btn-new-task').addEventListener('click', () => { location.hash = newTaskHash(getNewTaskContext()); });
   window.addEventListener('hashchange', renderRoute);
+  document.addEventListener('keydown', async (e) => {   // Cmd/Ctrl+Z undoes the last change (text fields keep their own undo)
+    if (e.key.toLowerCase() !== 'z' || e.shiftKey || e.altKey || !(e.metaKey || e.ctrlKey)) return;
+    const a = document.activeElement;
+    if (a && (['INPUT', 'SELECT', 'TEXTAREA'].includes(a.tagName) || a.isContentEditable)) return;
+    if (document.querySelector('.popover, .modal, .modal-backdrop, [aria-modal="true"]')) return;
+    e.preventDefault();
+    try { await api.undo(); await refresh(); toast('Undone'); } catch (err) { toast(err.message, 'error'); }
+  });
   subscribe(renderBanner);
   setInterval(() => { refresh().catch((e) => console.warn('poll failed', e)); }, POLL_MS);
   api.setUnauthorizedHandler(showLogin);

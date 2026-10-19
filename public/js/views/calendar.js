@@ -336,6 +336,7 @@ function openBlockPopover(view, anchor, block) {
     acts.push(partForm);
   }
   if (isTask && block.missed) acts.push(btn("Didn't do it", act(() => api.deleteBlock(block.id))));
+  else if (isTask && Date.parse(block.end) <= Date.now()) acts.push(btn('Delete block', act(() => api.deleteBlock(block.id))));
   if (free) acts.push(btn(block.pinned ? 'Unpin' : 'Pin here', act(() => api.updateBlock(block.id, { pinned: !block.pinned }))));
 
   let form = null;

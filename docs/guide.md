@@ -64,6 +64,7 @@ safety margin) and **General** (`#/settings/general`: timezone, week start, 24-h
   move and offers "Undo". Stage headers have a grip too, for reordering stages within their project.
 - **Agenda keyboard**: `j` / `k` move the selection, `x` toggles done (for a split task it opens a menu: "Whole task
   done" or "This part only"), `Enter` opens the selected item.
+- **Undo**: `Cmd+Z` / `Ctrl+Z` undoes the last change (up to 30 since the server started). "Reset progress" on a done task also reopens it.
 - **Timezone**: everything is shown in the timezone set in Settings. A banner offers to switch when your browser's
   timezone differs.
 

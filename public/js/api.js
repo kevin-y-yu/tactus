@@ -55,6 +55,7 @@ export const getTask = (id) => request('GET', `tasks/${enc(id)}`);
 export const createTask = (body) => request('POST', 'tasks', body);
 export const updateTask = (id, body) => request('PATCH', `tasks/${enc(id)}`, body);
 export const deleteTask = (id) => request('DELETE', `tasks/${enc(id)}`);
+export const undo = () => request('POST', 'undo');
 export const resetTaskProgress = (id) => request('POST', `tasks/${enc(id)}/reset-progress`);
 
 // ---- recurring ----
