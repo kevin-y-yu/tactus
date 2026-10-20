@@ -10,6 +10,8 @@ import { h, clear, toast, openPopover, closePopover, fmtDate, fmtTime, fmtTimeRa
 import { state, subscribe, setCalendarRange, mutate, tz } from '../state.js';
 import * as api from '../api.js';
 import { createDragController } from './drag.js';
+import { promptUserEventTitle, openUserEventPopover } from './userEvents.js';
+import { isUserEvent } from '../userEventModel.js';
 import { visibleRange, fitPxPerHour, initialScrollPx, bandRanges, hoursListFor, cssHours, alphaColor } from '../calendarScale.js';
 
 const MIN_ITEM_PX = 12;
@@ -83,7 +85,8 @@ export function render(container, route, ctx) {
     pph: 48, mode: readPref(ZOOM_KEY) === '24h' ? '24h' : 'work', hoursFilter: readPref(HOURS_KEY) || 'all',
     range: { startMin: 480, endMin: 1080 }, untilLoaded: true, scrollOnce: false, ro: null,
   };
-  view.drag = createDragController({ pxPerHour: () => view.pph, redraw: () => draw(view) });
+  view.drag = createDragController({ pxPerHour: () => view.pph, redraw: () => draw(view),
+    onCreate: (start, end, draftEl) => promptUserEventTitle(draftEl, start, end, () => draftEl.remove()) });
   view.ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => onResize(view)) : null;
   const tzName = tz();
   const anchor = route.params.date || todayIn(tzName, Date.now());
@@ -197,12 +200,13 @@ function draw(view) {
       if (it.kind === 'event') {
         const ev = it.item;
         const el = h('div', {
-          class: 'event' + (ev.blocking ? '' : ' non-blocking'),
+          class: 'event' + (ev.blocking ? '' : ' non-blocking') + (isUserEvent(ev) ? ' user-event' : ''),
           dataset: { eventId: ev.id },
           style: { ...pos, borderLeftColor: ev.color || '' },
-          onclick: (e) => { e.stopPropagation(); openEventPopover(e.currentTarget, ev); },
+          onclick: (e) => { e.stopPropagation(); if (isUserEvent(ev)) openUserEventPopover(e.currentTarget, ev); else openEventPopover(e.currentTarget, ev); },
         }, h('div', { class: 'item-title' }, ev.title), h('div', { class: 'item-time' }, timeText));
         if (ev.uid === 'lunch' && ev.calendarId === null) view.drag.decorateLunch(el, ev, now);
+        else if (isUserEvent(ev)) view.drag.decorateUserEvent(el, ev, d, now);
         return el;
       }
       const b = it.item;

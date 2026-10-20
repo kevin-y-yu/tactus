@@ -108,6 +108,7 @@ let popover = null;
 let popoverAnchor = null;
 let onKeydown = null;
 let onMousedown = null;
+let popoverOnClose = null;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
 
@@ -119,9 +120,10 @@ export function closePopover() {
   if (popover) popover.remove();
   popover = null;
   popoverAnchor = null;
+  const cb = popoverOnClose; popoverOnClose = null; if (cb) cb();
 }
 
-export function openPopover(anchorEl, contentEl) {
+export function openPopover(anchorEl, contentEl, onClose = null) {
   closePopover();
   const el = document.createElement('div');
   el.className = 'popover';
@@ -134,8 +136,10 @@ export function openPopover(anchorEl, contentEl) {
   el.style.top = `${clamp(rect.top, 8, window.innerHeight - el.offsetHeight - 8)}px`;
   popover = el;
   popoverAnchor = anchorEl;
+  popoverOnClose = onClose;
   onKeydown = (e) => { if (e.key === 'Escape') closePopover(); };
   onMousedown = (e) => {
+    if (e.target.closest && e.target.closest('.datepop')) return;
     if (!el.contains(e.target) && !(popoverAnchor && popoverAnchor.contains(e.target))) closePopover();
   };
   document.addEventListener('keydown', onKeydown);

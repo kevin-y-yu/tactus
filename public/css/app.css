@@ -413,3 +413,9 @@ body{display:flex;flex-direction:column;height:100vh;font:var(--fs-base)/var(--l
 .te-pick:hover{background:rgba(127,127,127,.15)}
 .te-pick.on{background:rgba(127,127,127,.25);font-weight:600}
 .te-pick-mark{width:1em;text-align:center}
+
+/* ===== user events (tactus-only) ===== */
+.event.can-resize:hover .resize-handle,.event.selected .resize-handle{background:var(--c-handle)}
+.user-event-draft{border-style:dashed;opacity:.75;pointer-events:none;z-index:3}
+.cal.dragging{user-select:none;-webkit-user-select:none}
+/* ===== end user events ===== */

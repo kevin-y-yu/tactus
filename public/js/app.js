@@ -5,6 +5,7 @@ import * as api from './api.js';
 import { state, loadAll, refresh, subscribe } from './state.js';
 import { h, clear, toast, closePopover, parseRoute } from './ui.js';
 import { setNewTaskContext, getNewTaskContext, newTaskHash } from './newTask.js';
+import { openNewUserEvent } from './views/userEvents.js';
 
 // Route table (§10.1). Modules owned by Chunks 12-14 may not exist yet -> placeholder.
 const VIEW_MODULES = {
@@ -119,6 +120,7 @@ function wireOnce() {
     try { await api.runSchedule(); await refresh(); toast('Rescheduled'); } catch (e) { toast(e.message, 'error'); } finally { btn.disabled = false; }
   });
   el('btn-new-task').addEventListener('click', () => { location.hash = newTaskHash(getNewTaskContext()); });
+  el('btn-new-event').addEventListener('click', (e) => openNewUserEvent(e.currentTarget));
   window.addEventListener('hashchange', renderRoute);
   document.addEventListener('keydown', async (e) => {   // Cmd/Ctrl+Z undoes the last change (text fields keep their own undo)
     if (e.key.toLowerCase() !== 'z' || e.shiftKey || e.altKey || !(e.metaKey || e.ctrlKey)) return;

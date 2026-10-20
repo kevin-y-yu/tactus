@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 // Drag and resize of calendar blocks (spec §10.3), and move-only drag of lunch (same day, to a future time; today's lunch even if missed), hand-built on Pointer Events; snapping is the pure dragResult.
 // Idea from Planly (MIT): wireBlock drag/resize pointer-gesture structure; reimplemented.
-import { dragResult } from '../dragModel.js';
+import { dragResult, createResult } from '../dragModel.js';
 import { utcToZoned } from '../../shared/time.js';
+import { isUserEvent, userEventDbId } from '../userEventModel.js';
 import { h, toast, closePopover, fmtTimeRange } from '../ui.js';
 import { state, mutate, tz } from '../state.js';
 import * as api from '../api.js';
@@ -28,6 +29,11 @@ export function canResize(block, colDate, tzName) {
     && utcToZoned(Date.parse(block.end) - 1, tzName).date === colDate;
 }
 
+export function canDragUserEvent(ev, now) { return isUserEvent(ev) && Date.parse(ev.start) >= now; }
+export function canResizeUserEvent(ev, colDate, tzName) {
+  return utcToZoned(Date.parse(ev.start), tzName).date === colDate && utcToZoned(Date.parse(ev.end) - 1, tzName).date === colDate;
+}
+
 export function overlapTitles(blockId, start, end, blocks, events) {
   const out = [];
   for (const ev of events) {
@@ -44,7 +50,7 @@ export function overlapTitles(blockId, start, end, blocks, events) {
 
 // Controller: one per mounted calendar view. All drag state lives here.
 // `redraw` re-renders the view; `pxPerHour` is the calendar scale: a number or a getter returning the current pph (v2 V2-D9).
-export function createDragController({ pxPerHour, redraw }) {
+export function createDragController({ pxPerHour, redraw, onCreate = null }) {
   const pph = typeof pxPerHour === 'function' ? pxPerHour : () => pxPerHour;
   let scrollEl = null, gesture = null, pendingRedraw = false, suppressClick = false;
   let selectedId = null, lastPointerType = null;
@@ -74,6 +80,17 @@ export function createDragController({ pxPerHour, redraw }) {
     if (String(ev.id) === selectedId) el.classList.add('selected');
   }
 
+  // Tactus-only events: same rules as blocks (future start to drag; resize only within the rendered day).
+  function decorateUserEvent(el, ev, colDate, now) {
+    if (!canDragUserEvent(ev, now)) return;
+    el.classList.add('can-drag');
+    if (canResizeUserEvent(ev, colDate, tz())) {
+      el.classList.add('can-resize');
+      el.appendChild(h('div', { class: 'resize-handle' }));
+    }
+    if (String(ev.id) === selectedId) el.classList.add('selected');
+  }
+
   function attach(el) {
     scrollEl = el;
     el.addEventListener('pointerdown', onPointerDown);
@@ -93,36 +110,61 @@ export function createDragController({ pxPerHour, redraw }) {
     selectedId = null;
   }
 
+  // Shared gesture listeners (move, drop, cancel, Escape).
+  function listen() {
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onCancel);
+    document.addEventListener('keydown', onKey);
+  }
+
   function onPointerDown(e) {
     lastPointerType = e.pointerType;
     suppressClick = false;
     if (gesture || !e.isPrimary) return;
     if (e.pointerType !== 'touch' && e.button !== 0) return;
     const el = e.target.closest('.block.can-drag, .event.can-drag');
-    if (!el) return;
+    if (!el) {
+      // Drag on empty column space creates a user event (mouse/pen only; touch keeps native scroll).
+      if (!onCreate || e.pointerType === 'touch') return;
+      if (e.target.closest('.block, .event, .drag-ghost')) return;
+      const colEl = e.target.closest('.cal-col');
+      if (!colEl) return;
+      gesture = { el: colEl, block: null, lunch: null, userEv: null, mode: 'create', pointerId: e.pointerId,
+        x0: e.clientX, y0: e.clientY, lastX: e.clientX, lastY: e.clientY, scroll0: scrollEl.scrollTop, colEl,
+        y0col: e.clientY - colEl.getBoundingClientRect().top, origStart: null, origEnd: null,
+        started: false, result: null, pointerCol: colEl, ghost: null, label: null, root: null, raf: 0 };
+      listen();
+      return;
+    }
     // D8: touch on an unselected block is left to native scroll.
     if (e.pointerType === 'touch' && !el.classList.contains('selected')) return;
-    let block = null, lunch = null, mode = 'move';
+    let block = null, lunch = null, userEv = null, mode = 'move';
     if (el.classList.contains('event')) {
-      lunch = state.calendar.events.find((x) => String(x.id) === el.dataset.eventId);
-      if (!lunch || !canDragLunch(lunch, Date.now(), tz())) return;
+      const ev = state.calendar.events.find((x) => String(x.id) === el.dataset.eventId);
+      if (!ev) return;
+      if (isUserEvent(ev)) {
+        if (!canDragUserEvent(ev, Date.now())) return;
+        userEv = ev;
+        mode = e.target.closest('.resize-handle') && el.classList.contains('can-resize') ? 'resize' : 'move';
+      } else {
+        if (!canDragLunch(ev, Date.now(), tz())) return;
+        lunch = ev;
+      }
     } else {
       block = state.calendar.blocks.find((b) => String(b.id) === el.dataset.blockId);
       if (!block || !canDrag(block, Date.now())) return;
       mode = e.target.closest('.resize-handle') && el.classList.contains('can-resize') ? 'resize' : 'move';
     }
-    const span = block || lunch;
+    const span = block || lunch || userEv;
     gesture = {
-      el, block, lunch, mode, pointerId: e.pointerId,
+      el, block, lunch, userEv, mode, pointerId: e.pointerId,
       x0: e.clientX, y0: e.clientY, lastX: e.clientX, lastY: e.clientY,
       scroll0: scrollEl.scrollTop, colEl: el.closest('.cal-col'),
       origStart: Date.parse(span.start), origEnd: Date.parse(span.end),
       started: false, result: null, pointerCol: null, ghost: null, label: null, root: null, raf: 0,
     };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-    document.addEventListener('pointercancel', onCancel);
-    document.addEventListener('keydown', onKey);
+    listen();
   }
 
   function onMove(e) {
@@ -141,11 +183,12 @@ export function createDragController({ pxPerHour, redraw }) {
     closePopover();
     try { g.el.setPointerCapture(g.pointerId); } catch (_) { /* capture is best-effort */ }
     g.started = true;
-    g.el.classList.add('drag-source');
+    if (g.mode !== 'create') g.el.classList.add('drag-source');
     g.root = scrollEl.closest('.cal');
     if (g.root) g.root.classList.add('dragging');
-    g.label = h('div', { class: 'drag-ghost-time' }, fmtTimeRange(g.origStart, g.origEnd, tz()));
-    g.ghost = h('div', { class: 'drag-ghost', style: { top: g.el.style.top, height: g.el.style.height } }, g.label);
+    g.label = h('div', { class: 'drag-ghost-time' }, g.mode === 'create' ? '' : fmtTimeRange(g.origStart, g.origEnd, tz()));
+    g.ghost = h('div', { class: 'drag-ghost', style: g.mode === 'create' ? { top: '0px', height: '12px' }
+      : { top: g.el.style.top, height: g.el.style.height } }, g.label);
     if (g.colEl) g.colEl.appendChild(g.ghost);
     g.raf = requestAnimationFrame(tick);
     update();
@@ -155,6 +198,12 @@ export function createDragController({ pxPerHour, redraw }) {
   function compute() {
     const g = gesture;
     let dayDelta = 0;
+    if (g.mode === 'create') {
+      g.pointerCol = g.colEl;
+      g.result = createResult({ date: g.colEl.dataset.date, y0px: g.y0col, y1px: g.lastY - g.colEl.getBoundingClientRect().top,
+        pxPerHour: pph(), tz: tz(), now: Date.now() });
+      return;
+    }
     if (g.lunch) {
       g.pointerCol = g.colEl;
     } else if (g.mode === 'move') {
@@ -181,7 +230,7 @@ export function createDragController({ pxPerHour, redraw }) {
     const r = g.result;
     if (r.error) {
       g.ghost.classList.add('invalid');
-      g.label.textContent = "Can't move into the past";
+      g.label.textContent = g.mode === 'create' ? "Can't create in the past" : "Can't move into the past";
       return;
     }
     g.ghost.classList.remove('invalid');
@@ -217,12 +266,25 @@ export function createDragController({ pxPerHour, redraw }) {
     update();
     const result = g.result;
     const started = g.started;
-    const block = g.block, lunch = g.lunch, origStart = g.origStart, origEnd = g.origEnd;
+    const mode = g.mode;
+    const block = g.block, lunch = g.lunch, userEv = g.userEv, origStart = g.origStart, origEnd = g.origEnd;
     const srcEl = g.el;
     const srcCol = g.ghost ? g.ghost.parentNode : null;
     const geo = g.ghost ? { top: g.ghost.style.top, height: g.ghost.style.height } : null;
     endGesture();
     if (!started) return;
+    if (mode === 'create') {
+      if (result.error) { toast("Can't create an event in the past", 'error'); return; }
+      // A deferred redraw in endGesture may have rebuilt the columns; re-find the result's column by date then.
+      let col = srcCol;
+      if (col && !col.isConnected) col = scrollEl.querySelector(`.cal-col[data-date="${utcToZoned(result.start, tz()).date}"]`);
+      if (!col || !geo) return;
+      const draft = h('div', { class: 'event user-event user-event-draft', style: { top: geo.top, height: geo.height, left: '0', width: 'calc(100% - 2px)' } },
+        h('div', { class: 'item-time' }, fmtTimeRange(result.start, result.end, tz())));
+      col.appendChild(draft);
+      onCreate(result.start, result.end, draft);
+      return;
+    }
     if (result.error) { toast("Can't move into the past", 'error'); return; }
     if (result.start === origStart && result.end === origEnd) return;
     // Provisional move; skipped if a deferred redraw already rebuilt the DOM.
@@ -232,6 +294,7 @@ export function createDragController({ pxPerHour, redraw }) {
       srcEl.style.height = geo.height;
     }
     if (lunch) commitLunch(lunch, result.start, result.end);
+    else if (userEv) commitUserEvent(userEv, result.start, result.end);
     else commit(block, result.start, result.end);
   }
 
@@ -244,6 +307,19 @@ export function createDragController({ pxPerHour, redraw }) {
       return;
     }
     const titles = overlapTitles(block.id, start, end, state.calendar.blocks, state.calendar.events);
+    if (titles.length) toast('Overlaps ' + titles.join(', '), 'warn');
+  }
+
+  // Tactus-only event move/resize: PATCH the stored event; the overlap check ignores the event itself.
+  async function commitUserEvent(ev, start, end) {
+    try {
+      await mutate(() => api.updateUserEvent(userEventDbId(ev), { start: new Date(start).toISOString(), end: new Date(end).toISOString() }));
+    } catch (err) {
+      toast(err.message, 'error');
+      redraw();
+      return;
+    }
+    const titles = overlapTitles(ev.id, start, end, state.calendar.blocks, state.calendar.events.filter((x) => x.id !== ev.id));
     if (titles.length) toast('Overlaps ' + titles.join(', '), 'warn');
   }
 
@@ -312,5 +388,5 @@ export function createDragController({ pxPerHour, redraw }) {
     selectedId = null;
   }
 
-  return { decorate, decorateLunch, attach, deferRedraw, destroy };
+  return { decorate, decorateLunch, decorateUserEvent, attach, deferRedraw, destroy };
 }

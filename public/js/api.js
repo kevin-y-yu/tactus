@@ -79,6 +79,11 @@ export const partialDoneBlock = (id, minutes) => request('POST', `blocks/${enc(i
 export const moveLunch = (date, body) => request('PUT', `lunch/${enc(date)}`, body);
 export const deleteBlock = (id) => request('DELETE', `blocks/${enc(id)}`);
 
+// ---- tactus-only user events ----
+export const createUserEvent = (body) => request('POST', 'user-events', body);
+export const updateUserEvent = (id, body) => request('PATCH', `user-events/${enc(id)}`, body);
+export const deleteUserEvent = (id) => request('DELETE', `user-events/${enc(id)}`);
+
 // ---- external calendars ----
 export const listCalendars = () => request('GET', 'calendars');
 export const createCalendar = (body) => request('POST', 'calendars', body);
