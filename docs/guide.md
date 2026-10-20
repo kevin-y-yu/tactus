@@ -55,8 +55,9 @@ safety margin) and **General** (`#/settings/general`: timezone, week start, 24-h
 - **New task**: the header's "+ Task" opens the editor over the current view; Esc or closing it returns to that view
   unchanged. In Projects the new task starts in the project and stage you last clicked in; in Agenda it starts in the
   project you filtered by.
+- **Events**: "+ Event" in the header adds an event of your own (title, date, start and end). In Week or Day you can also drag on an empty part of a day to draw one (it snaps to 15 minutes), then type its title and press Enter (Esc cancels). These events live only in Tactus, belong to no calendar, and block your time like a meeting, including the meeting buffer. Click one to change its title or times or delete it; drag it to move it (to another day too) and drag its bottom edge to resize it. Cmd+Z / Ctrl+Z undoes these changes too.
 - **Deadlines**: a deadline with a date but no time means the end of that day (23:59 in your timezone).
-- **Drag and resize**: drag a future block to pin it at a new time; lunch can be dragged too (move only, same day, to a time that has not passed; today's lunch even if you missed it); drag its bottom edge to resize a task block. On
+- **Drag and resize**: drag a future block to pin it at a new time; lunch can be dragged too (move only, same day, to a time that has not passed; today's lunch even if you missed it); your own events can be moved and resized like task blocks; drag its bottom edge to resize a task block. On
   touch screens, tap a block first to select it, then drag. Esc cancels a drag. The block popover's "Move…" is the
   keyboard alternative.
 - **Moving tasks between projects**: in Projects, drag a task by its grip (⠿) onto another stage, a "No stage" group or
