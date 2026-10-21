@@ -278,14 +278,13 @@ function openEventPopover(anchor, ev) {
   openPopover(anchor, content);
 }
 
-// A small circle on a block: one click marks the task (or the recurring occurrence) done.
+// A small circle on a block: one click completes that block only (the task or occurrence auto-completes once its
+// completed blocks cover the full duration).
 function doneBubble(b) {
-  const mark = b.kind === 'task'
-    ? () => api.updateTask(b.taskId, { status: 'done' })
-    : () => api.markOccurrenceDone(b.recurringId, b.occurrenceDate);
+  const mark = () => api.updateBlock(b.id, { completed: true });
   const stop = (e) => e.stopPropagation();
   return h('button', {
-    type: 'button', class: 'done-bubble', title: 'Mark done', 'aria-label': `Mark ${blockLabel(b)} done`,
+    type: 'button', class: 'done-bubble', title: 'Mark this block done', 'aria-label': `Mark ${blockLabel(b)} done`,
     onpointerdown: stop, onmousedown: stop, ontouchstart: stop,
     onclick: async (e) => {
       e.stopPropagation();
@@ -339,7 +338,7 @@ function openBlockPopover(view, anchor, block) {
     acts.push(btn('Partially done…', () => { partForm.hidden = !partForm.hidden; if (!partForm.hidden) minInput.focus(); }));
     acts.push(partForm);
   }
-  if (isTask && block.missed) acts.push(btn("Didn't do it", act(() => api.deleteBlock(block.id))));
+  if (block.missed) acts.push(btn("Didn't do it", act(() => api.deleteBlock(block.id))));
   else if (isTask && Date.parse(block.end) <= Date.now()) acts.push(btn('Delete block', act(() => api.deleteBlock(block.id))));
   if (free) acts.push(btn(block.pinned ? 'Unpin' : 'Pin here', act(() => api.updateBlock(block.id, { pinned: !block.pinned }))));
 

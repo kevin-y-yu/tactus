@@ -338,7 +338,7 @@ test('T-API-13: parts, completion credit, auto-complete and reopen', async (t) =
   assert.strictEqual(task.task.status, 'todo');
   assert.strictEqual(task.task.completedAt, null);
   assert.strictEqual(task.creditedMin, 120);
-  const open = task.blocks.filter((b) => !b.completed);
+  const open = task.blocks.filter((b) => !b.completed && !b.missed);   // the un-completed b1 sits in the past (missed), its work is re-planned
   assert.deepStrictEqual(open.map((b) => (Date.parse(b.end) - Date.parse(b.start)) / MINUTE), [60]);
   assert.strictEqual(open.every((b) => b.id !== b1), true);
 });
@@ -414,20 +414,21 @@ test('T-API-17: completed block credit survives pruning', async (t) => {
   ]);
   assert.strictEqual((await api('PATCH', `/api/blocks/${blocks[0].id}`, { completed: true })).status, 200);
   blocks = await sorted();
+  // the completed block moved back to end at now, freeing its slot for the remaining work
   assert.deepStrictEqual(blocks.filter((b) => !b.completed).map((b) => [iso(b.start), iso(b.end)]), [
-    ['2026-10-19T11:00:00.000Z', '2026-10-19T12:00:00.000Z'],
+    ['2026-10-19T10:00:00.000Z', '2026-10-19T11:00:00.000Z'],
   ]);
   clock = Date.parse('2026-11-19T11:00:00Z');
   assert.strictEqual((await api('POST', '/api/schedule/run')).status, 200);
   const task = (await api('GET', `/api/tasks/${id}`)).body;
   assert.strictEqual(task.creditedMin, 60);
   assert.deepStrictEqual(sortBlocks(task.blocks).map((b) => [iso(b.start), iso(b.end), b.completed]), [
-    ['2026-10-19T10:00:00.000Z', '2026-10-19T11:00:00.000Z', true],
+    ['2026-10-19T09:00:00.000Z', '2026-10-19T10:00:00.000Z', true],
     ['2026-11-19T11:00:00.000Z', '2026-11-19T12:00:00.000Z', false],
   ]);
 });
 
-test('T-API-18: passed unticked recurring occurrence is skipped, not re-planned', async (t) => {
+test('T-API-18: missed recurring block stays marked missed and its time is re-planned', async (t) => {
   const { createApp, loadConfig } = appModules();
   const tmp = mkTmp();
   let clock = C0;
@@ -445,9 +446,9 @@ test('T-API-18: passed unticked recurring occurrence is skipped, not re-planned'
   assert.strictEqual(run.status, 200);
   assert.deepStrictEqual((await recBlocks()).map((b) => [b.occurrenceDate, iso(b.start), iso(b.end), b.missed]), [
     ['2026-10-19', '2026-10-19T10:00:00.000Z', '2026-10-19T10:30:00.000Z', true],
+    ['2026-10-19', '2026-10-19T11:00:00.000Z', '2026-10-19T11:30:00.000Z', false],
     ['2026-10-20', '2026-10-20T00:00:00.000Z', '2026-10-20T00:30:00.000Z', false],
   ]);
-  assert.deepStrictEqual(run.body.atRisk.filter((a) => a.recurringId === rid && a.occurrenceDate === '2026-10-19'), []);
 });
 
 test('T-API-19: TaskStatus fields', async (t) => {
@@ -465,7 +466,7 @@ test('T-API-19: TaskStatus fields', async (t) => {
   });
 });
 
-test('T-API-20: skipped recurring occurrence in agenda, undeletable, tick later marks done', async (t) => {
+test('T-API-20: missed recurring block is dismissable and re-planned; tick later marks done', async (t) => {
   const { createApp, loadConfig } = appModules();
   const tmp = mkTmp();
   let clock = C0;
@@ -477,13 +478,12 @@ test('T-API-20: skipped recurring occurrence in agenda, undeletable, tick later 
   assert.strictEqual((await api('POST', '/api/schedule/run')).status, 200);
   const pick = async () => (await api('GET', '/api/agenda')).body.rows.filter((x) => x.recurringId === rid && x.occurrenceDate === '2026-10-19');
   const rows = await pick();
-  assert.deepStrictEqual(rows.map((x) => [x.missed, x.riskState]), [[true, 'ok']]);
-  const blockId = rows[0].blockId;
-  assert.strictEqual((await api('DELETE', `/api/blocks/${blockId}`)).status, 409);
+  assert.deepStrictEqual(rows.map((x) => [x.missed, x.riskState]), [[true, 'ok'], [false, 'ok']]);
+  assert.strictEqual((await api('DELETE', `/api/blocks/${rows[0].blockId}`)).status, 204);   // "Didn't do it" dismisses the missed block
+  assert.deepStrictEqual((await pick()).map((x) => x.missed), [false]);
   assert.strictEqual((await api('POST', `/api/recurring/${rid}/occurrences/2026-10-19/done`)).status, 204);
-  assert.deepStrictEqual((await pick()).map((x) => [x.done, x.missed, x.riskState]), [[true, false, 'none']]);
   const blocks = sortBlocks((await api('GET', R2)).body.blocks.filter((b) => b.kind === 'recurring' && b.occurrenceDate === '2026-10-19'));
-  assert.deepStrictEqual(blocks.map((b) => [iso(b.start), iso(b.end)]), [['2026-10-19T10:00:00.000Z', '2026-10-19T10:30:00.000Z']]);
+  assert.deepStrictEqual(blocks, []);   // done: nothing is re-planned
 });
 
 // ---------- T-API-X (extra API cases) ----------
@@ -598,7 +598,7 @@ test('T-API-X6: recurring validation', async (t) => {
   bad400(await api('POST', '/api/recurring', { ...REC, durationMin: 490 }), 'durationMin');
 });
 
-test('T-API-X7: completing a recurring block is rejected', async (t) => {
+test('T-API-X7: completing a recurring block credits that block; the occurrence is done once its blocks cover the duration', async (t) => {
   const { createApp, loadConfig } = appModules();
   const tmp = mkTmp();
   let clock = C0;
@@ -607,5 +607,12 @@ test('T-API-X7: completing a recurring block is rejected', async (t) => {
   assert.strictEqual((await api('POST', '/api/recurring', REC)).status, 201);
   const blocks = (await api('GET', calUrl(C0, C0 + DAY))).body.blocks;
   const block = blocks.find((b) => b.occurrenceDate === '2026-10-19');
-  assert.strictEqual((await api('PATCH', `/api/blocks/${block.id}`, { completed: true })).status, 400);
+  const siblings = blocks.filter((b) => b.occurrenceDate === '2026-10-19');
+  const res = await api('PATCH', `/api/blocks/${block.id}`, { completed: true });
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.body.completed, true);
+  const after = (await api('GET', calUrl(C0, C0 + DAY))).body.blocks.filter((b) => b.occurrenceDate === '2026-10-19');
+  const covered = siblings.every((b) => b.id === block.id);   // a single-block occurrence is done at once
+  assert.strictEqual(after.every((b) => b.done), covered);
+  assert.strictEqual((await api('PATCH', `/api/blocks/${block.id}`, { completed: false })).status, 200);
 });
