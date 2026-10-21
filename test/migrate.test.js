@@ -55,7 +55,7 @@ function inspect(dbPath) {
 
 const core = (s) => ({ id: s.id, name: s.name, color: s.color, hours: s.hours });
 
-test('T-V2-MIG-1: a v1 database migrates: workHours becomes schedule 1 "Work", schedule_id columns, version 4', async (t) => {
+test('T-V2-MIG-1: a v1 database migrates: workHours becomes schedule 1 "Work", schedule_id columns, version 5', async (t) => {
   const e = env(t);
   buildV1(e.dbPath);
   const repo = await e.open();
@@ -67,7 +67,7 @@ test('T-V2-MIG-1: a v1 database migrates: workHours becomes schedule 1 "Work", s
   assert.deepStrictEqual(s.workHours, MON_ONLY);
   assert.strictEqual(s.defaultScheduleId, 1);
   const i = inspect(e.dbPath);
-  assert.strictEqual(i.version, 4);
+  assert.strictEqual(i.version, 5);
   for (const tbl of ['tasks', 'projects', 'recurring']) assert.ok(i.cols[tbl].includes('schedule_id'), `${tbl}.schedule_id`);
   assert.strictEqual(i.workHoursRow, null);
   const tasks = await repo.listTasks();
@@ -80,7 +80,7 @@ test('T-V2-MIG-1: a v1 database migrates: workHours becomes schedule 1 "Work", s
   assert.deepStrictEqual(core(await repo.getSchedule(1)), core(list[0]));
 });
 
-test('T-V2-MIG-2: openDb twice on the same file is idempotent (one schedule, version 4)', async (t) => {
+test('T-V2-MIG-2: openDb twice on the same file is idempotent (one schedule, version 5)', async (t) => {
   const e = env(t);
   buildV1(e.dbPath);
   const first = await e.open();
@@ -90,7 +90,7 @@ test('T-V2-MIG-2: openDb twice on the same file is idempotent (one schedule, ver
   assert.strictEqual(list.length, 1);
   assert.deepStrictEqual(core(list[0]), { id: 1, name: 'Work', color: '#1a73e8', hours: MON_ONLY });
   let i = inspect(e.dbPath);
-  assert.strictEqual(i.version, 4);
+  assert.strictEqual(i.version, 5);
   assert.strictEqual(i.scheduleCount, 1);
   await second.close();
   // planner-added (V2-D1 "every step inside up is guarded"): a database whose version was reset to 0 after migration 1
@@ -103,7 +103,7 @@ test('T-V2-MIG-2: openDb twice on the same file is idempotent (one schedule, ver
   assert.strictEqual(again.length, 1);
   assert.deepStrictEqual(core(again[0]), { id: 1, name: 'Work', color: '#1a73e8', hours: MON_ONLY });
   i = inspect(e.dbPath);
-  assert.strictEqual(i.version, 4);
+  assert.strictEqual(i.version, 5);
   assert.strictEqual(i.scheduleCount, 1);
 });
 
@@ -117,6 +117,6 @@ test('T-V2-MIG-3: a fresh database gets one schedule "Work" with the v1 default 
   assert.deepStrictEqual(s.workHours, V1_DEFAULT);
   assert.strictEqual(s.defaultScheduleId, 1);
   const i = inspect(e.dbPath);
-  assert.strictEqual(i.version, 4);
+  assert.strictEqual(i.version, 5);
   assert.strictEqual(i.workHoursRow, null);
 });
